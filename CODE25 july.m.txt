@@ -1,0 +1,34 @@
+unzip('DR.zip');
+imds = imageDatastore('DR','IncludeSubfolders',true,'LabelSource','foldernames');
+[imdsTrain,imdsTest] = splitEachLabel(imds,0.7,'randomized');
+net = squeezenet
+inputSize = net.Layers(1).InputSize;
+augimdsTrain = augmentedImageDatastore(inputSize(1:2),imdsTrain);
+augimdsTest = augmentedImageDatastore(inputSize(1:2),imdsTest);
+layer = 'pool10';
+featuresTrain = activations(net,augimdsTrain,layer,'OutputAs','rows');
+featuresTest = activations(net,augimdsTest,layer,'OutputAs','rows');
+YTrain = imdsTrain.Labels;
+YTest = imdsTest.Labels;
+
+net = efficientnet-b0
+inputSize = net.Layers(1).InputSize;
+augimdsTrain = augmentedImageDatastore(inputSize(1:2),imdsTrain);
+augimdsTest = augmentedImageDatastore(inputSize(1:2),imdsTest);
+layer = 'matmul';
+featuresTrain = activations(net,augimdsTrain,layer,'OutputAs','rows');
+featuresTest = activations(net,augimdsTest,layer,'OutputAs','rows');
+YTrain = imdsTrain.Labels;
+YTest = imdsTest.Labels;
+
+%%%For segmentation%%%
+
+numClasses = 2;
+network = 'Xception';
+lgraph = deeplabv3plusLayers(imageSize,numClasses,network, ...
+             'DownsamplingFactor',16);
+lgraph = deeplabv3plusLayers(imageSize,numClasses,'Xception');
+opts = trainingOptions('sgdm',...
+    'MiniBatchSize',32,...
+    'MaxEpochs',200);
+net = trainNetwork(tds,lgraph,opts);
